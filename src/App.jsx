@@ -28,7 +28,18 @@ export default function App() {
   const [dateTo, setDateTo] = useState("");
   const [memberFilter, setMemberFilter] = useState("All");
   const [selected, setSelected] = useState(null);
-  const [activePreset, setActivePreset] = useState(null); // tracks which quick-filter button is active, for highlighting
+  const [activePreset, setActivePreset] = useState(null);
+  const [sortColumn, setSortColumn] = useState("date"); // "date" | "member"
+  const [sortDirection, setSortDirection] = useState("desc"); // "asc" | "desc"
+
+  function toggleSort(column) {
+    if (sortColumn === column) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  } // tracks which quick-filter button is active, for highlighting
 
   function applyPreset(days, label) {
     const to = new Date();
@@ -82,21 +93,34 @@ export default function App() {
   );
 
   const filtered = useMemo(() => {
-    return data
-      .filter((item) => {
-        if (memberFilter !== "All" && item.member_name !== memberFilter) return false;
-        if (typeFilter !== "All" && item.agreement_type !== typeFilter) return false;
-        if (dateFrom && item.event_date && item.event_date < dateFrom) return false;
-        if (dateTo && item.event_date && item.event_date > dateTo) return false;
-        if (query) {
-          const q = query.toLowerCase();
-          const hay = `${item.member_name} ${item.partner_name} ${item.title}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => (b.event_date || "").localeCompare(a.event_date || ""));
-  }, [data, query, typeFilter, dateFrom, dateTo, memberFilter]);
+    const result = data.filter((item) => {
+      if (memberFilter !== "All" && item.member_name !== memberFilter) return false;
+      if (typeFilter !== "All" && item.agreement_type !== typeFilter) return false;
+      if (dateFrom && item.event_date && item.event_date < dateFrom) return false;
+      if (dateTo && item.event_date && item.event_date > dateTo) return false;
+      if (query) {
+        const q = query.toLowerCase();
+        const hay = `${item.member_name} ${item.partner_name} ${item.title}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const dir = sortDirection === "asc" ? 1 : -1;
+    result.sort((a, b) => {
+      if (sortColumn === "member") {
+        return dir * a.member_name.localeCompare(b.member_name);
+      }
+      // date: items with no date always sort to the bottom, regardless of direction
+      const ad = a.event_date || "";
+      const bd = b.event_date || "";
+      if (!ad && !bd) return 0;
+      if (!ad) return 1;
+      if (!bd) return -1;
+      return dir * ad.localeCompare(bd);
+    });
+    return result;
+  }, [data, query, typeFilter, dateFrom, dateTo, memberFilter, sortColumn, sortDirection]);
 
   return (
     <div
@@ -262,7 +286,7 @@ export default function App() {
               className="mono"
               style={{
                 display: "grid",
-                gridTemplateColumns: "100px 1fr 1fr 130px 90px",
+                gridTemplateColumns: "100px 0.35fr 1.65fr 130px 90px",
                 padding: "10px 18px",
                 fontSize: 11,
                 letterSpacing: "0.06em",
@@ -271,8 +295,18 @@ export default function App() {
                 background: "#F6F4EE",
               }}
             >
-              <div>DATE</div>
-              <div>MEMBER</div>
+              <div
+                onClick={() => toggleSort("date")}
+                style={{ cursor: "pointer", userSelect: "none", display: "flex", alignItems: "center", gap: 4 }}
+              >
+                DATE {sortColumn === "date" && (sortDirection === "asc" ? "▲" : "▼")}
+              </div>
+              <div
+                onClick={() => toggleSort("member")}
+                style={{ cursor: "pointer", userSelect: "none", display: "flex", alignItems: "center", gap: 4 }}
+              >
+                MEMBER {sortColumn === "member" && (sortDirection === "asc" ? "▲" : "▼")}
+              </div>
               <div>PARTNER</div>
               <div>TYPE</div>
               <div>CONF.</div>
@@ -294,7 +328,7 @@ export default function App() {
                   onClick={() => setSelected(item)}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "100px 1fr 1fr 130px 90px",
+                    gridTemplateColumns: "100px 0.35fr 1.65fr 130px 90px",
                     padding: "13px 18px",
                     fontSize: 13.5,
                     borderBottom: "1px solid #EDEAE0",
