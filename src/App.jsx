@@ -28,6 +28,22 @@ export default function App() {
   const [dateTo, setDateTo] = useState("");
   const [memberFilter, setMemberFilter] = useState("All");
   const [selected, setSelected] = useState(null);
+  const [activePreset, setActivePreset] = useState(null); // tracks which quick-filter button is active, for highlighting
+
+  function applyPreset(days, label) {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    setDateFrom(from.toISOString().slice(0, 10));
+    setDateTo(to.toISOString().slice(0, 10));
+    setActivePreset(label);
+  }
+
+  function clearDatePreset() {
+    setDateFrom("");
+    setDateTo("");
+    setActivePreset(null);
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -169,10 +185,46 @@ export default function App() {
         </select>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {[
+            { label: "7d", days: 7, title: "Last 7 days" },
+            { label: "30d", days: 30, title: "Last 30 days" },
+            { label: "90d", days: 90, title: "Last 90 days" },
+          ].map((p) => (
+            <button
+              key={p.label}
+              onClick={() => applyPreset(p.days, p.label)}
+              title={p.title}
+              style={{
+                border: activePreset === p.label ? "1px solid #38546B" : "1px solid #D8D4C8",
+                background: activePreset === p.label ? "#38546B" : "#fff",
+                color: activePreset === p.label ? "#fff" : "#3E3B36",
+                borderRadius: 6,
+                padding: "7px 12px",
+                fontSize: 12.5,
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              {p.title}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Calendar size={14} color="#8B8878" />
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={{ border: "1px solid #D8D4C8", borderRadius: 6, padding: "7px 9px", fontSize: 13 }} />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => { setDateFrom(e.target.value); setActivePreset(null); }}
+            style={{ border: "1px solid #D8D4C8", borderRadius: 6, padding: "7px 9px", fontSize: 13 }}
+          />
           <span style={{ color: "#8B8878", fontSize: 13 }}>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={{ border: "1px solid #D8D4C8", borderRadius: 6, padding: "7px 9px", fontSize: 13 }} />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => { setDateTo(e.target.value); setActivePreset(null); }}
+            style={{ border: "1px solid #D8D4C8", borderRadius: 6, padding: "7px 9px", fontSize: 13 }}
+          />
         </div>
 
         {(query || memberFilter !== "All" || typeFilter !== "All" || dateFrom || dateTo) && (
@@ -181,8 +233,7 @@ export default function App() {
               setQuery("");
               setMemberFilter("All");
               setTypeFilter("All");
-              setDateFrom("");
-              setDateTo("");
+              clearDatePreset();
             }}
             style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#7A3B3B", fontSize: 13, cursor: "pointer" }}
           >
